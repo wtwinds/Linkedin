@@ -1,21 +1,32 @@
-# Python
+# ================= PYTHON =================
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Node
+# ================= ENV (VERY IMPORTANT) =================
+.env
+.env.*
+
+# ================= NODE =================
 node_modules/
 
-# Static large files
+# ================= STATIC LARGE FILES =================
 static/images/
 static/sector_images/
+static/uploads/
 
-# Archives & media
+# ================= ARCHIVES & MEDIA =================
 *.zip
 *.mp4
 *.pdf
 *.csv
 
-# OS
+# ================= IDE =================
+.vscode/
+.idea/
+
+# ================= OS =================
 .DS_Store
 Thumbs.db
