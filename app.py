@@ -29,8 +29,8 @@ mail = Mail(app)
 @app.route("/", methods=["GET", "POST"])
 def login():
 
-    # AUTO LOGIN
-    if session.get("email") and session.get("verified"):
+    # 🔥 AUTO LOGIN (DB based)
+    if session.get("email"):
         user = users.find_one({"email": session["email"]})
         if user:
             if user.get("profile_completed"):
@@ -62,13 +62,13 @@ def login():
                 msg.body = f"Your WT Winds OTP is: {otp}"
                 mail.send(msg)
                 flash("OTP sent to your email", "success")
-            except:
-                flash("Mail error  Check SMTP", "danger")
+            except Exception as e:
+                print("MAIL ERROR:", e)
+                flash("Mail error - Check SMTP", "danger")
 
         # ================= RESEND OTP =================
         elif action == "resend_otp":
             email = session.get("email")
-
             if not email:
                 return redirect("/")
 
@@ -84,7 +84,8 @@ def login():
                 msg.body = f"Your new OTP is: {otp}"
                 mail.send(msg)
                 flash("New OTP sent successfully", "info")
-            except:
+            except Exception as e:
+                print("RESEND ERROR:", e)
                 flash("Failed to resend OTP", "danger")
 
         # ================= VERIFY OTP =================
@@ -94,17 +95,19 @@ def login():
             if entered == session.get("otp"):
                 email = session["email"]
 
-                users.update_one(
-                    {"email": email},
-                    {"$set": {
+                # 🔥 CHECK EXISTING USER
+                user = users.find_one({"email": email})
+
+                if not user:
+                    users.insert_one({
                         "email": email,
                         "verified": True,
                         "profile_completed": False
-                    }},
-                    upsert=True
-                )
+                    })
 
+                session["verified"] = True
                 return redirect("/signup")
+
             else:
                 flash("Invalid OTP ❌", "danger")
 
