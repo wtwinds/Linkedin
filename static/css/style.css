@@ -1,0 +1,129 @@
+/* Make profile card responsive */
+.profile-card {
+    width: 100%;
+    max-width: 720px;
+    /* bigger card */
+    border-radius: 14px;
+    margin: auto;
+}
+
+/* Typography */
+.profile-title {
+    font-weight: 600;
+    font-size: 26px;
+}
+
+.profile-subtitle {
+    font-size: 15px;
+    color: #6c757d;
+}
+
+/* Labels */
+.form-label {
+    font-weight: 500;
+    font-size: 15px;
+}
+
+/* Bigger inputs */
+.form-control,
+.form-select {
+    padding: 10px 12px;
+    font-size: 15px;
+}
+
+/* Large button */
+.btn-primary {
+    font-size: 16px;
+    padding: 12px;
+}
+
+/* ================= DASHBOARD STYLES ================= */
+
+/* Page background */
+body {
+    background: #f4f6f8;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Card shadow reusable */
+.card-shadow {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border-radius: 14px;
+}
+
+/* Profile image */
+.profile-img {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    margin-top: -60px;
+}
+
+/* Activity icons */
+.action-btn i {
+    font-size: 18px;
+}
+
+/* ================= MOBILE FIX ================= */
+
+@media (max-width: 768px) {
+
+    .profile-card {
+        max-width: 100%;
+        margin: 0 10px;
+    }
+
+    .card-shadow {
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+
+    .profile-img {
+        width: 90px;
+        height: 90px;
+        margin-top: -45px;
+    }
+
+    .action-btn {
+        font-size: 13px;
+    }
+}
+
+/* ================= AVATAR WITHOUT IMAGE ================= */
+
+/* Big profile avatar */
+.profile-avatar {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: #0a66c2;
+    /* LinkedIn blue */
+    color: white;
+    font-size: 42px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: -60px;
+    border: 4px solid #fff;
+}
+
+/* Small post avatar */
+.post-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #0a66c2;
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
