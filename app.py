@@ -1,9 +1,8 @@
-from flask import Flask, render_template, request, session, redirect
+from flask import Flask, render_template, request, session, redirect, flash
 from pymongo import MongoClient
-import random
-from flask_mail import Mail, Message
-from flask import flash
+from werkzeug.security import generate_password_hash, check_password_hash
 import config
+from bson import ObjectId
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
@@ -12,136 +11,82 @@ app.secret_key = config.SECRET_KEY
 client = MongoClient(config.MONGO_URI)
 db = client["wtwinds"]
 users = db["users"]
-posts=db["posts"]
+posts = db["posts"]
 
-# Mail
-app.config.update(
-    MAIL_SERVER=config.MAIL_SERVER,
-    MAIL_PORT=config.MAIL_PORT,
-    MAIL_USE_TLS=config.MAIL_USE_TLS,
-    MAIL_USERNAME=config.MAIL_USERNAME,
-    MAIL_PASSWORD=config.MAIL_PASSWORD
-)
-mail = Mail(app)
-
-
-# ================= LOGIN =================
+# ================= HOME LOGIN =================
 @app.route("/", methods=["GET", "POST"])
 def login():
 
-    # 🔥 AUTO LOGIN (DB based)
+    # AUTO LOGIN
     if session.get("email"):
         user = users.find_one({"email": session["email"]})
         if user:
             if user.get("profile_completed"):
                 return redirect("/dashboard")
             else:
-                return redirect("/signup")
-
-    if "step" not in session:
-        session["step"] = "email"
+                return redirect("/profile")
 
     if request.method == "POST":
-        action = request.form.get("action")
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-        # ================= SEND OTP =================
-        if action == "send_otp":
-            email = request.form.get("email")
-            otp = str(random.randint(100000, 999999))
+        user = users.find_one({"email": email})
 
-            session["otp"] = otp
+        if user and check_password_hash(user["password"], password):
             session["email"] = email
-            session["step"] = "otp"
+            flash("Login successful ✅", "success")
 
-            try:
-                msg = Message(
-                    "WT Winds OTP",
-                    sender=config.MAIL_USERNAME,
-                    recipients=[email]
-                )
-                msg.body = f"Your WT Winds OTP is: {otp}"
-                mail.send(msg)
-                flash("OTP sent to your email", "success")
-            except Exception as e:
-                print("MAIL ERROR:", e)
-                flash("Mail error - Check SMTP", "danger")
-
-        # ================= RESEND OTP =================
-        elif action == "resend_otp":
-            email = session.get("email")
-            if not email:
-                return redirect("/")
-
-            otp = str(random.randint(100000, 999999))
-            session["otp"] = otp
-
-            try:
-                msg = Message(
-                    "WT Winds OTP",
-                    sender=config.MAIL_USERNAME,
-                    recipients=[email]
-                )
-                msg.body = f"Your new OTP is: {otp}"
-                mail.send(msg)
-                flash("New OTP sent successfully", "info")
-            except Exception as e:
-                print("RESEND ERROR:", e)
-                flash("Failed to resend OTP", "danger")
-
-        # ================= VERIFY OTP =================
-        elif action == "verify_otp":
-            entered = request.form.get("otp")
-
-            if entered == session.get("otp"):
-                email = session["email"]
-
-                # 🔥 CHECK EXISTING USER
-                user = users.find_one({"email": email})
-
-                if not user:
-                    users.insert_one({
-                        "email": email,
-                        "verified": True,
-                        "profile_completed": False
-                    })
-
-                session["verified"] = True
-                return redirect("/signup")
-
+            if user.get("profile_completed"):
+                return redirect("/dashboard")
             else:
-                flash("Invalid OTP ❌", "danger")
+                return redirect("/profile")
+        else:
+            flash("Invalid email or password ❌", "danger")
 
-    return render_template("login.html", step=session.get("step"))
+    return render_template("login.html")
 
-# ================= CHANGE EMAIL =================
-@app.route("/change-email")
-def change_email():
-    session.clear()
-    return redirect("/")
 
-# ================= PROFILE PAGE =================
+# ================= SIGNUP =================
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if users.find_one({"email": email}):
+            flash("User already exists ⚠️", "warning")
+            return redirect("/")
+
+        users.insert_one({
+            "email": email,
+            "password": generate_password_hash(password),
+            "profile_completed": False
+        })
+
+        session["email"] = email
+        flash("Account created 🎉", "success")
+        return redirect("/profile")
+
+    return render_template("signup.html")
+
+
+# ================= PROFILE =================
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
     if not session.get("email"):
         return redirect("/")
 
     if request.method == "POST":
-        name = request.form.get("name")
-        age = request.form.get("age")
-        college = request.form.get("college")
-        profession = request.form.get("profession")
-
         users.update_one(
             {"email": session["email"]},
             {"$set": {
-                "name": name,
-                "age": age,
-                "college": college,
-                "profession": profession,
+                "name": request.form.get("name"),
+                "age": request.form.get("age"),
+                "college": request.form.get("college"),
+                "profession": request.form.get("profession"),
                 "profile_completed": True
             }}
         )
-
         return redirect("/dashboard")
 
     return render_template("profile.html")
@@ -153,24 +98,21 @@ def dashboard():
     if not session.get("email"):
         return redirect("/")
 
-    # CREATE POST
     if request.method == "POST":
         content = request.form.get("content")
         if content:
             posts.insert_one({
                 "email": session["email"],
                 "content": content,
-                "like": [],
+                "likes": [],
                 "comments": []
             })
 
     user = users.find_one({"email": session["email"]})
-    # Profile not completed → redirect
-    if not user or not user.get("profile_completed"):
-        return redirect("/signup")
+    if not user.get("profile_completed"):
+        return redirect("/profile")
 
     all_posts = list(posts.find().sort("_id", -1))
-
     return render_template("dashboard.html", user=user, posts=all_posts)
 
 # ================= LIKE POST =================
@@ -179,10 +121,11 @@ def like_post(post_id):
     if not session.get("email"):
         return redirect("/")
 
-    from bson import ObjectId
-
     post = posts.find_one({"_id": ObjectId(post_id)})
     user_email = session["email"]
+
+    if not post:
+        return redirect("/dashboard")
 
     if user_email in post.get("likes", []):
         # Unlike
@@ -205,8 +148,6 @@ def comment_post(post_id):
     if not session.get("email"):
         return redirect("/")
 
-    from bson import ObjectId
-
     text = request.form.get("comment")
     if text:
         posts.update_one(
@@ -221,17 +162,15 @@ def comment_post(post_id):
 
     return redirect("/dashboard")
 
-#==================Delete Post============
+# ================= DELETE POST =================
 @app.route("/delete-post/<post_id>")
 def delete_post(post_id):
     if not session.get("email"):
         return redirect("/")
 
-    from bson import ObjectId
-
     posts.delete_one({
         "_id": ObjectId(post_id),
-        "email": session["email"]  # Only delete own post
+        "email": session["email"]  # Only own post delete
     })
 
     return redirect("/dashboard")
